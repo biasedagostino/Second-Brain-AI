@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "Note": {
+      "title": "Note",
+      "description": "A personal note or indexed resource (website, document, image metadata).",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "summary": { "type": "string" },
+        "type": { "type": "string", "enum": ["note", "website", "document", "image"] },
+        "url": { "type": "string" },
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "connections": { "type": "array", "items": { "type": "string" } },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "type", "userId", "userEmail", "createdAt"]
+    },
+    "ApiKey": {
+      "title": "ApiKey",
+      "description": "API Key configuration for AI models.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "key": { "type": "string" },
+        "model": { "type": "string" },
+        "embedded": { "type": "boolean" },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "key", "model", "userId"]
+    }
+  },
+  "firestore": {
+    "notes": {
+      "schema": "Note",
+      "description": "Collection of all indexed notes and resources."
+    },
+    "users/{userId}/apiKeys": {
+      "schema": "ApiKey",
+      "description": "User specific API keys."
+    }
+  }
+}

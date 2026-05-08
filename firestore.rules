@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(email) {
+      return isSignedIn() && request.auth.token.email == email;
+    }
+
+    function isAuthorized() {
+      // STRICT RESTRICTION: Only the user email provided in the prompt
+      // We check email_verified to prevent spoofing as per Phase 5 test
+      return isOwner('solomessaggi808@gmail.com') && (request.auth.token.email_verified == true);
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidNote(data) {
+      return data.title is string && data.title.size() <= 500 &&
+             data.content is string && data.content.size() <= 100000 &&
+             (data.summary == null || (data.summary is string && data.summary.size() <= 2000)) &&
+             data.type in ['note', 'website', 'document', 'image'] &&
+             data.userId == request.auth.uid &&
+             data.userEmail == request.auth.token.email &&
+             data.keywords is list && data.keywords.size() <= 20 &&
+             data.connections is list && data.connections.size() <= 20;
+    }
+
+    function isValidApiKey(data) {
+      return data.name is string && data.name.size() <= 100 &&
+             data.key is string && data.key.size() <= 200 &&
+             data.model is string && data.model.size() <= 100 &&
+             data.embedded is bool &&
+             data.userId == request.auth.uid;
+    }
+
+    match /notes/{noteId} {
+      // Secure List Queries (Column 8): Explicitly evaluate resource.data against request.auth.uid
+      // Path Variable Hardening (Column 3): Validate noteId
+      allow get: if isAuthorized() && isValidId(noteId) && resource.data.userId == request.auth.uid;
+      allow list: if isAuthorized() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthorized() && isValidId(noteId) &&
+                      isValidNote(request.resource.data) &&
+                      request.resource.data.createdAt == request.time &&
+                      request.resource.data.updatedAt == request.time;
+                      
+      allow update: if isAuthorized() && isValidId(noteId) &&
+                      isValidNote(request.resource.data) &&
+                      request.resource.data.userId == resource.data.userId &&
+                      request.resource.data.createdAt == resource.data.createdAt &&
+                      request.resource.data.updatedAt == request.time &&
+                      // Action: Edit content (Column 4: Tiered updates)
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'content', 'summary', 'type', 'keywords', 'connections', 'updatedAt']);
+                      
+      allow delete: if isAuthorized() && isValidId(noteId) && resource.data.userId == request.auth.uid;
+    }
+
+    match /users/{userId}/apiKeys/{keyId} {
+        allow get: if isAuthorized() && isValidId(keyId) && userId == request.auth.uid;
+        allow list: if isAuthorized() && userId == request.auth.uid;
+        
+        allow create: if isAuthorized() && isValidId(keyId) && userId == request.auth.uid &&
+                        isValidApiKey(request.resource.data);
+                        
+        allow update: if isAuthorized() && isValidId(keyId) && userId == request.auth.uid &&
+                        isValidApiKey(request.resource.data) &&
+                        request.resource.data.userId == resource.data.userId &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'key', 'model', 'embedded']);
+                        
+        allow delete: if isAuthorized() && isValidId(keyId) && userId == request.auth.uid;
+    }
+  }
+}
