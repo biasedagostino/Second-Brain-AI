@@ -1,13 +1,14 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "20260508.16",
+  "version": "20260508.17",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server.js",
+    "gcp-build": "npm run build",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },

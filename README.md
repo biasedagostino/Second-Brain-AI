@@ -1,9 +1,7 @@
-# Second Brain AI (v20260508.16)
+# Second Brain AI (v20260508.17)
 
-## 🔧 Configurazione Firebase & Gemini (Aggiornamento 2026-05-08.16)
-- **Fix Critico Dialog:** Risolto definitivamente l'errore di riferimento `setDialog` definendo lo stato mancante e implementando l'interfaccia grafica della modale.
-- **Accessibilità Migliorata:** Aggiunto il pulsante "Nuova Nota" direttamente nella Dashboard. Il pulsante ora apre automaticamente il modulo di inserimento nella vista Note, eliminando passaggi superflui.
-- **Integrità Strutturale:** Ripristinati i tag di chiusura del componente principale per garantire la corretta visualizzazione su tutti i dispositivi.
+## 🔧 Configurazione Firebase & Gemini (Aggiornamento 2026-05-08.17)
+- **Fix Deploy (MIME type error):** Aggiunto lo script `gcp-build` nel `package.json` per forzare la compilazione dei file statici durante il deploy su Google Cloud Run. Questo risolve l'errore di caricamento dei moduli JavaScript causato dalla mancanza della cartella `dist` nel container di produzione.
 
 
 A powerful personal knowledge management system that utilizes AI to index your thoughts, automate note connections, and provide context-aware answers to your questions.
