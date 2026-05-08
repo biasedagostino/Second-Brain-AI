@@ -22,7 +22,7 @@ export async function uploadToDrive(file: File): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error('Upload fallito: ' + response.statusText);
+    throw new Error(`Upload fallito (${response.status}): ${response.statusText}`);
   }
 
   const data = await response.json();

@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  signOut, 
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
   onAuthStateChanged,
-  User 
+  User
 } from 'firebase/auth';
-import { 
-  collection, 
+import {
+  collection,
   addDoc,
   updateDoc,
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
+  query,
+  where,
+  orderBy,
+  onSnapshot,
   Timestamp,
   serverTimestamp,
   doc,
@@ -24,15 +24,15 @@ import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { uploadToDrive } from './services/driveService';
 import { indexContent, askSecondBrain, generateTitle } from './lib/gemini';
 import { cn } from './lib/utils';
-import { 
-  Brain, 
-  Plus, 
-  Search, 
-  Home, 
-  Link as LinkIcon, 
-  FileText, 
-  Image as ImageIcon, 
-  LogOut, 
+import {
+  Brain,
+  Plus,
+  Search,
+  Home,
+  Link as LinkIcon,
+  FileText,
+  Image as ImageIcon,
+  LogOut,
   Send,
   Loader2,
   ChevronRight,
@@ -76,23 +76,23 @@ export default function App() {
   const [notesStartWithForm, setNotesStartWithForm] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
-  const [notification, setNotification] = useState<{ 
-    title: string; 
-    message: string; 
-    type: 'error' | 'info' | 'confirm'; 
-    onConfirm?: () => void; 
+  const [notification, setNotification] = useState<{
+    title: string;
+    message: string;
+    type: 'error' | 'info' | 'confirm';
+    onConfirm?: () => void;
     confirmText?: string;
   } | null>(null);
 
   const [dialog, setDialog] = useState<{
     title: string;
     message: string;
-    onConfirm?: () => void; 
+    onConfirm?: () => void;
     confirmText?: string;
   } | null>(null);
 
   const [progress, setProgress] = useState(0);
-  const [apiKeys, setApiKeys] = useState<{id: string, name: string, key: string, model: string, embedded: boolean}[]>([]);
+  const [apiKeys, setApiKeys] = useState<{ id: string, name: string, key: string, model: string, embedded: boolean }[]>([]);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyModel, setNewKeyModel] = useState('');
   const [newKeyValue, setNewKeyValue] = useState('');
@@ -183,7 +183,7 @@ export default function App() {
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'apiKeys');
     }
-  };  
+  };
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (u) {
@@ -252,16 +252,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-md-surface flex overflow-hidden">
-      <div className="fixed top-4 right-4 z-40 bg-md-primary/10 text-md-primary text-xs font-bold px-3 py-1.5 rounded-full border border-md-primary/20 backdrop-blur-sm pointer-events-none">
-        {apiKeys.find(k => k.id === selectedApiKeyId)?.name || 'Gemini 3 Flash'}
-      </div>
       {progress > 0 && progress < 100 && (
-          <div className="fixed top-0 left-0 h-1 bg-md-primary z-[200] transition-all" style={{ width: `${progress}%` }} />
+        <div className="fixed top-0 left-0 h-1 bg-md-primary z-[200] transition-all" style={{ width: `${progress}%` }} />
       )}
       <AnimatePresence>
         {notification && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -274,14 +271,14 @@ export default function App() {
               <p className="text-md-on-surface-variant mb-6">{notification.message}</p>
               <div className="flex gap-3">
                 {notification.type === 'confirm' && (
-                  <button 
+                  <button
                     onClick={() => setNotification(null)}
                     className="flex-1 px-4 py-3 rounded-full font-bold text-md-on-surface border border-md-outline/20"
                   >
                     Annulla
                   </button>
                 )}
-                <button 
+                <button
                   onClick={() => {
                     notification.onConfirm?.();
                     setNotification(null);
@@ -301,7 +298,7 @@ export default function App() {
 
       {!user ? (
         <div className="min-h-screen w-full flex flex-col items-center justify-center bg-md-surface p-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="max-w-md w-full text-center space-y-8"
@@ -315,13 +312,13 @@ export default function App() {
               <h1 className="text-4xl font-bold text-md-on-surface tracking-tight">Second Brain AI</h1>
               <p className="text-md-on-surface-variant px-4">Archivia, indicizza e interroga la tua conoscenza personale con la potenza di Gemini.</p>
             </div>
-            <button 
+            <button
               onClick={handleLogin}
               className="md-btn-primary w-full py-4 shadow-xl shadow-md-primary/10"
             >
               Accedi con Google
             </button>
-            <p className="text-xs text-md-outline uppercase tracking-widest font-semibold">Accesso limitato: {AUTHORIZED_EMAIL}</p>
+            <p className="text-xs text-md-outline uppercase tracking-widest font-semibold">Accesso limitato</p>
           </motion.div>
         </div>
       ) : (
@@ -334,51 +331,51 @@ export default function App() {
             </div>
 
             <div className="flex-1 space-y-2">
-              <NavItem 
-                active={currentView === 'dashboard'} 
+              <NavItem
+                active={currentView === 'dashboard'}
                 onClick={() => setCurrentView('dashboard')}
                 icon={<Home className="w-5 h-5" />}
                 label="Dashboard"
-                modelName={apiKeys.find(k => k.id === selectedApiKeyId)?.model || 'Gemini 3 Flash'}
               />
-              <NavItem 
-                active={currentView === 'notes'} 
+              <NavItem
+                active={currentView === 'notes'}
                 onClick={() => setCurrentView('notes')}
                 icon={<FileText className="w-5 h-5" />}
                 label="Note"
-                modelName={apiKeys.find(k => k.id === selectedApiKeyId)?.model || 'Gemini 3 Flash'}
               />
-              <NavItem 
-                active={currentView === 'qa'} 
+              <NavItem
+                active={currentView === 'qa'}
                 onClick={() => setCurrentView('qa')}
                 icon={<Search className="w-5 h-5" />}
                 label="Chiedi all'AI"
-                modelName={apiKeys.find(k => k.id === selectedApiKeyId)?.model || 'Gemini 3 Flash'}
               />
-              <NavItem 
-                active={currentView === 'graph'} 
+              <NavItem
+                active={currentView === 'graph'}
                 onClick={() => setCurrentView('graph')}
                 icon={<TrendingUp className="w-5 h-5" />}
                 label="Knowledge"
-                modelName={apiKeys.find(k => k.id === selectedApiKeyId)?.model || 'Gemini 3 Flash'}
               />
-              <NavItem 
-                active={currentView === 'settings'} 
+              <NavItem
+                active={currentView === 'settings'}
                 onClick={() => setCurrentView('settings')}
                 icon={<Settings className="w-5 h-5" />}
                 label="Configurazione"
-                modelName={apiKeys.find(k => k.id === selectedApiKeyId)?.model || 'Gemini 3 Flash'}
               />
             </div>
 
-            <div className="pt-6 border-t border-md-outline/10">
-              <p className="text-[10px] font-mono opacity-40 px-2 mb-4 text-center">v{PORTAL_VERSION}</p>
+            <div className="pt-6 border-t border-md-outline/10 space-y-4">
+              <div className="px-4">
+                <div className="bg-md-primary/10 text-md-primary text-[10px] font-bold px-3 py-1.5 rounded-full border border-md-primary/20 text-center uppercase tracking-widest">
+                  AI: {apiKeys.find(k => k.id === selectedApiKeyId)?.name || 'Gemini 3 Flash'}
+                </div>
+              </div>
+              <p className="text-[10px] font-mono opacity-40 px-2 text-center">v{PORTAL_VERSION}</p>
               <div className="px-2 flex items-center justify-between">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <img 
-                    src={user.photoURL || ''} 
-                    className="w-10 h-10 rounded-full" 
-                    alt="User" 
+                  <img
+                    src={user.photoURL || ''}
+                    className="w-10 h-10 rounded-full"
+                    alt="User"
                     referrerPolicy="no-referrer"
                   />
                   <div className="flex-1 truncate">
@@ -395,9 +392,27 @@ export default function App() {
 
           {/* Main Content */}
           <main className="flex-1 h-screen overflow-y-auto relative bg-md-surface pb-24 lg:pb-0">
+            {/* Mobile Header */}
+            <header className="lg:hidden flex items-center justify-between px-6 py-4 border-b border-md-outline/10 bg-md-surface/80 backdrop-blur-xl sticky top-0 z-30">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-md-primary rounded-xl shadow-lg shadow-md-primary/20">
+                  <Brain className="w-5 h-5 text-md-on-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <h1 className="text-lg font-black tracking-tighter leading-none">SECOND BRAIN</h1>
+                  <span className="text-[9px] font-bold text-md-primary opacity-80 uppercase tracking-widest mt-0.5">
+                    {apiKeys.find(k => k.id === selectedApiKeyId)?.name || 'Gemini 3 Flash'}
+                  </span>
+                </div>
+              </div>
+              <button onClick={handleLogout} className="md-icon-btn bg-md-surface-variant/40">
+                <LogOut className="w-5 h-5" />
+              </button>
+            </header>
+
             <AnimatePresence mode="wait">
               {currentView === 'dashboard' && (
-                <motion.div 
+                <motion.div
                   key="dashboard"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -409,7 +424,7 @@ export default function App() {
                       <h2 className="text-3xl font-bold">Dashboard</h2>
                       <p className="text-md-on-surface-variant">Analisi della tua conoscenza digitale</p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         setNotesStartWithForm(true);
                         setCurrentView('notes');
@@ -433,7 +448,7 @@ export default function App() {
                       <div className="text-3xl font-bold">{notes.length}</div>
                       <p className="text-[10px] text-md-on-surface-variant mt-2">Documenti salvati nel database</p>
                     </div>
-                    
+
                     <div className="md-card p-6 flex flex-col justify-between">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-md-on-surface-variant text-[10px] font-bold uppercase tracking-widest">Connessioni</span>
@@ -508,7 +523,7 @@ export default function App() {
                                 <span className="font-bold">{count} ({Math.round(percentage)}%)</span>
                               </div>
                               <div className="h-2 bg-md-surface-variant rounded-full overflow-hidden">
-                                <motion.div 
+                                <motion.div
                                   initial={{ width: 0 }}
                                   animate={{ width: `${percentage}%` }}
                                   className="h-full bg-md-primary"
@@ -529,7 +544,7 @@ export default function App() {
                           .sort((a, b) => b.count - a.count)
                           .slice(0, 15)
                           .map(({ tag, count }) => (
-                            <div 
+                            <div
                               key={tag}
                               className="px-4 py-2 bg-md-primary/5 border border-md-primary/10 rounded-full flex items-center gap-2 group hover:bg-md-primary/10 transition-colors"
                             >
@@ -573,12 +588,12 @@ export default function App() {
               )}
 
               {currentView === 'notes' && (
-                <NotesView 
+                <NotesView
                   onClose={() => {
                     setNotesStartWithForm(false);
                     setCurrentView('dashboard');
-                  }} 
-                  user={user} 
+                  }}
+                  user={user}
                   existingNotes={notes}
                   setIsIndexing={setIsIndexing}
                   isIndexing={isIndexing}
@@ -591,7 +606,7 @@ export default function App() {
               )}
 
               {currentView === 'qa' && (
-                <QaView 
+                <QaView
                   notes={notes}
                   user={user!}
                   isAsking={isAsking}
@@ -604,7 +619,7 @@ export default function App() {
               )}
 
               {currentView === 'graph' && (
-                <motion.div 
+                <motion.div
                   key="graph"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -614,7 +629,7 @@ export default function App() {
                   <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold">Knowledge</h2>
                   </div>
-                  
+
                   <KnowledgeGraph notes={notes} />
                 </motion.div>
               )}
@@ -632,24 +647,24 @@ export default function App() {
                     <div className="flex flex-col gap-2">
                       {apiKeys.map(key => (
                         <div key={key.id} className="flex items-center gap-2">
-                          <input 
+                          <input
                             type="radio"
                             checked={selectedApiKeyId === key.id}
                             onChange={() => setSelectedApiKeyId(key.id)}
                           />
                           <span className="flex-1 text-sm">{key.name} ({key.model})</span>
-                        <button onClick={() => deleteApiKey(key.id)} className="text-red-400">
-                             <Trash2 className="w-4 h-4" />
+                          <button onClick={() => deleteApiKey(key.id)} className="text-red-400">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                           <button onClick={() => duplicateApiKey(key)} className="text-blue-400 text-xs">Dup</button>
-                          <button 
+                          <button
                             onClick={() => {
                               setEditingKeyId(key.id);
                               setNewKeyName(key.name);
                               setNewKeyModel(key.model);
                               setNewKeyValue(key.key);
                               setNewKeyEmbedded(key.embedded);
-                            }} 
+                            }}
                             className="text-green-400 text-xs"
                           >
                             Edit
@@ -667,8 +682,8 @@ export default function App() {
                       </label>
                       {editingKeyId ? (
                         <div className="flex gap-2">
-                            <button onClick={updateApiKey} className="md-btn-primary flex-1">Salva Modifiche</button>
-                            <button onClick={() => { setEditingKeyId(null); setNewKeyName(''); setNewKeyModel(''); setNewKeyValue(''); setNewKeyEmbedded(false); }} className="md-btn-secondary flex-1">Annulla</button>
+                          <button onClick={updateApiKey} className="md-btn-primary flex-1">Salva Modifiche</button>
+                          <button onClick={() => { setEditingKeyId(null); setNewKeyName(''); setNewKeyModel(''); setNewKeyValue(''); setNewKeyEmbedded(false); }} className="md-btn-secondary flex-1">Annulla</button>
                         </div>
                       ) : (
                         <button onClick={addApiKey} className="md-btn-primary w-full">Aggiungi API Key</button>
@@ -704,7 +719,7 @@ export default function App() {
       <AnimatePresence>
         {dialog && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/70 backdrop-blur-md">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -717,14 +732,14 @@ export default function App() {
               <p className="text-md-on-surface-variant mb-8 leading-relaxed">{dialog.message}</p>
               <div className="flex flex-col gap-3">
                 {dialog.onConfirm && (
-                  <button 
+                  <button
                     onClick={dialog.onConfirm}
                     className="md-btn-primary w-full py-4"
                   >
                     {dialog.confirmText || 'Conferma'}
                   </button>
                 )}
-                <button 
+                <button
                   onClick={() => setDialog(null)}
                   className="md-btn-secondary w-full py-4"
                 >
@@ -739,9 +754,9 @@ export default function App() {
   );
 }
 
-function NavItem({ active, onClick, icon, label, modelName }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string, modelName?: string }) {
+function NavItem({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       className={cn(
         "w-full flex items-center gap-4 px-4 py-3 rounded-full transition-all group",
@@ -794,13 +809,13 @@ function ExpandableNote({ note, onClose, setProgress }: { note: Note; onClose: (
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-6 bg-black/80 backdrop-blur-xl">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
         className="bg-md-surface-variant max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-10 rounded-[32px] border border-md-outline/20 relative"
       >
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 md:top-6 md:right-6 md-icon-btn bg-md-surface/40"
         >
@@ -809,15 +824,15 @@ function ExpandableNote({ note, onClose, setProgress }: { note: Note; onClose: (
         <div className="mb-6">
           <span className="text-xs uppercase font-bold text-md-primary tracking-widest">{note.type}</span>
           <h2 className="text-2xl md:text-3xl font-bold mt-2 text-md-on-surface">{note.title}</h2>
-          
+
           <div className="mt-6 p-4 bg-md-surface/50 rounded-2xl border border-md-outline/10 space-y-3">
-            <textarea 
+            <textarea
               value={prompt}
               onChange={e => setPrompt(e.target.value)}
               placeholder="Istruzioni per migliorare l'analisi (es: 'focalizzati sulla data di scadenza')"
               className="md-input w-full bg-transparent p-0"
             />
-            <button 
+            <button
               onClick={handleReanalyze}
               disabled={isReanalyzing}
               className="px-4 py-2 bg-md-primary text-md-on-primary rounded-full font-bold text-sm flex items-center gap-2 disabled:opacity-50"
@@ -874,7 +889,7 @@ function NoteCard({ note, setNotification, setProgress }: { note: Note; setNotif
   };
 
   return (
-    <motion.div 
+    <motion.div
       layout
       className="md-card flex flex-col space-y-4 group"
     >
@@ -888,7 +903,7 @@ function NoteCard({ note, setNotification, setProgress }: { note: Note; setNotif
           <span className="text-[10px] uppercase tracking-wider font-bold text-md-outline">
             {note.createdAt?.toDate ? format(note.createdAt.toDate(), 'dd MMM yyyy', { locale: it }) : 'Ora'}
           </span>
-          <button 
+          <button
             onClick={handleDelete}
             disabled={isDeleting}
             className="p-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:bg-red-400/10 rounded-lg disabled:opacity-50"
@@ -929,7 +944,7 @@ function NoteCard({ note, setNotification, setProgress }: { note: Note; setNotif
         </div>
       )}
 
-      <button 
+      <button
         onClick={() => setIsExpanded(true)}
         className="w-full text-center text-xs font-semibold py-3 text-md-primary border border-md-primary/20 rounded-xl hover:bg-md-primary/10 transition-all uppercase tracking-widest mt-auto"
       >
@@ -943,9 +958,9 @@ function NoteCard({ note, setNotification, setProgress }: { note: Note; setNotif
   );
 }
 
-function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, setNotification, setProgress, setDialog, setCurrentView, initialShowForm = false }: { 
-  onClose: () => void; 
-  user: User; 
+function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, setNotification, setProgress, setDialog, setCurrentView, initialShowForm = false }: {
+  onClose: () => void;
+  user: User;
   existingNotes: Note[];
   setIsIndexing: (v: boolean) => void;
   isIndexing: boolean;
@@ -965,8 +980,8 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredNotes = existingNotes.filter(note => {
-    const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         note.content.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTag = selectedTag === null || note.keywords.includes(selectedTag);
     return matchesSearch && matchesTag;
   });
@@ -975,15 +990,24 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setIsUploading(true);
     try {
-        const driveUrl = await uploadToDrive(file);
-        setContent(prev => prev + `\n\n[FILE: ${file.name}](${driveUrl})\n`);
-    } catch (e) {
-        setNotification({title: 'Errore upload', message: 'Impossibile caricare su drive', type: 'error'});
+      const driveUrl = await uploadToDrive(file);
+      setContent(prev => prev + `\n\n[FILE: ${file.name}](${driveUrl})\n`);
+    } catch (e: any) {
+      console.error(e);
+      if (e.message.includes('401') || e.message.includes('autenticato')) {
+        setNotification({
+          title: 'Sessione Scaduta',
+          message: 'La tua sessione Google Drive è scaduta. Per favore, effettua nuovamente il login.',
+          type: 'error'
+        });
+      } else {
+        setNotification({ title: 'Errore upload', message: 'Impossibile caricare su drive', type: 'error' });
+      }
     } finally {
-        setIsUploading(false);
+      setIsUploading(false);
     }
   };
 
@@ -1016,10 +1040,10 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
           }
         } catch (scrapeError) {
           console.warn("Scraping failed, using URL as content", scrapeError);
-          setNotification({ 
-            title: 'Scraping Fallito', 
-            message: 'Non è stato possibile estrarre il testo. Verrà indicizzato solo l\'URL.', 
-            type: 'warning' 
+          setNotification({
+            title: 'Scraping Fallito',
+            message: 'Non è stato possibile estrarre il testo. Verrà indicizzato solo l\'URL.',
+            type: 'warning'
           });
         }
       }
@@ -1028,13 +1052,13 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
       if (!finalTitle) {
         finalTitle = await generateTitle(finalContent, (p) => setProgress(30 + p * 0.1));
       }
-      
+
       const allKeywords = Array.from(new Set(existingNotes.flatMap(n => n.keywords)));
       const resultRaw = await indexContent(
-        finalTitle, 
-        finalContent, 
-        allKeywords, 
-        type === 'website' ? "Analizza questo sito web. Estrai gli argomenti centrali, i concetti chiave e i temi principali trattati nella pagina." : undefined, 
+        finalTitle,
+        finalContent,
+        allKeywords,
+        type === 'website' ? "Analizza questo sito web. Estrai gli argomenti centrali, i concetti chiave e i temi principali trattati nella pagina." : undefined,
         (p) => setProgress(40 + p * 0.6)
       );
       console.log("AI Result:", resultRaw);
@@ -1084,7 +1108,7 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       className="p-4 md:p-8 max-w-6xl mx-auto space-y-8"
@@ -1094,7 +1118,7 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
           <h2 className="text-3xl font-bold">Le tue Note</h2>
           <p className="text-md-on-surface-variant">Gestisci e aggiungi nuovi elementi alla tua conoscenza</p>
         </div>
-        <button 
+        <button
           onClick={() => setShowForm(!showForm)}
           className={cn("md-btn-primary w-full md:w-auto", showForm && "bg-md-surface-variant text-md-on-surface-variant border-md-outline/20")}
         >
@@ -1104,31 +1128,31 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
       </header>
 
       {showForm ? (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-3xl mx-auto w-full"
         >
           <form onSubmit={handleSubmit} className="space-y-6 md-card p-6 md:p-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-              <TypeSelector selected={type === 'note'} onClick={() => setType('note')} icon={<FileText className="w-5 h-5"/>} label="Pensiero" />
-              <TypeSelector selected={type === 'website'} onClick={() => setType('website')} icon={<LinkIcon className="w-5 h-5"/>} label="Sito" />
-              <TypeSelector selected={type === 'document'} onClick={() => setType('document')} icon={<FileText className="w-5 h-5"/>} label="Doc" />
-              <TypeSelector selected={type === 'image'} onClick={() => setType('image')} icon={<ImageIcon className="w-5 h-5"/>} label="Img" />
+              <TypeSelector selected={type === 'note'} onClick={() => setType('note')} icon={<FileText className="w-5 h-5" />} label="Pensiero" />
+              <TypeSelector selected={type === 'website'} onClick={() => setType('website')} icon={<LinkIcon className="w-5 h-5" />} label="Sito" />
+              <TypeSelector selected={type === 'document'} onClick={() => setType('document')} icon={<FileText className="w-5 h-5" />} label="Doc" />
+              <TypeSelector selected={type === 'image'} onClick={() => setType('image')} icon={<ImageIcon className="w-5 h-5" />} label="Img" />
             </div>
 
             <div className="space-y-4">
-              <input 
+              <input
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="Titolo per la tua memoria..." 
+                placeholder="Titolo per la tua memoria..."
                 className="md-input w-full"
               />
               <div className="flex gap-2">
-                <textarea 
+                <textarea
                   value={content}
                   onChange={e => setContent(e.target.value)}
-                  placeholder="Contenuto, link o trascrizione..." 
+                  placeholder="Contenuto, link o trascrizione..."
                   className="md-input w-full min-h-[250px] md:min-h-[350px] resize-none"
                   required
                 />
@@ -1139,8 +1163,8 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
               </div>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isIndexing}
               className="md-btn-primary w-full py-4 disabled:opacity-50 text-base font-bold shadow-lg shadow-md-primary/20"
             >
@@ -1161,7 +1185,7 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-md-outline" />
-              <input 
+              <input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Cerca tra le tue memorie..."
@@ -1171,7 +1195,7 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
           </div>
 
           <div className="flex flex-nowrap md:flex-wrap gap-2 pb-2 overflow-x-auto md:overflow-x-visible no-scrollbar">
-            <button 
+            <button
               onClick={() => setSelectedTag(null)}
               className={cn(
                 "px-4 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap",
@@ -1181,7 +1205,7 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
               Tutti
             </button>
             {Array.from(new Set(existingNotes.flatMap(n => n.keywords))).slice(0, 20).sort().map(tag => (
-              <button 
+              <button
                 key={tag}
                 onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
                 className={cn(
@@ -1214,7 +1238,7 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
 
 function TypeSelector({ selected, onClick, icon, label }: { selected: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
-    <button 
+    <button
       type="button"
       onClick={onClick}
       className={cn(
@@ -1228,10 +1252,10 @@ function TypeSelector({ selected, onClick, icon, label }: { selected: boolean; o
   );
 }
 
-function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgress, setDialog, setCurrentView }: { 
-  notes: Note[]; 
+function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgress, setDialog, setCurrentView }: {
+  notes: Note[];
   user: User;
-  isAsking: boolean; 
+  isAsking: boolean;
   setIsAsking: (v: boolean) => void;
   setNotification: (v: any) => void;
   setProgress: (p: number) => void;
@@ -1257,7 +1281,7 @@ function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgre
       const allKeywords = Array.from(new Set(notes.flatMap(n => n.keywords)));
       const resultRaw = await indexContent(`Risposta AI: ${result.q.slice(0, 30)}...`, result.a, allKeywords, undefined, (p) => setProgress(30 + p * 0.7));
       const indexed = typeof resultRaw === 'string' ? JSON.parse(resultRaw) : resultRaw;
-      
+
       await addDoc(collection(db, 'notes'), {
         title: `AI: ${result.q}`,
         content: result.a,
@@ -1351,12 +1375,12 @@ function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgre
         {!result && !isAsking && (
           <div className="h-full flex flex-col items-center justify-center text-md-on-surface-variant opacity-40 space-y-4 px-6 text-center">
             <Search className="w-12 h-12" />
-            <p className="font-medium italic text-sm md:text-base">"Qual è stata l'ultima idea sul progetto X?"<br/>"Riassumi le mie note su Y"</p>
+            <p className="font-medium italic text-sm md:text-base">"Qual è stata l'ultima idea sul progetto X?"<br />"Riassumi le mie note su Y"</p>
           </div>
         )}
 
         {result && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
@@ -1376,8 +1400,8 @@ function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgre
                   <ReactMarkdown>{result.a}</ReactMarkdown>
                 </div>
               </div>
-              
-              <button 
+
+              <button
                 onClick={handleSaveAsNote}
                 disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-2 bg-md-primary/10 text-md-primary rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-md-primary/20 transition-all disabled:opacity-50"
@@ -1401,13 +1425,13 @@ function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgre
 
       <div className="fixed bottom-24 lg:bottom-8 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-40">
         <form onSubmit={handleAsk} className="relative group shadow-2xl">
-          <input 
+          <input
             value={question}
             onChange={e => setQuestion(e.target.value)}
-            placeholder="Interroga il tuo cervello..." 
+            placeholder="Interroga il tuo cervello..."
             className="w-full bg-md-surface-variant/80 backdrop-blur-3xl border border-md-outline/10 rounded-full px-6 py-4 pr-14 md:px-8 md:py-5 md:pr-16 text-sm md:text-lg focus:outline-none focus:border-md-primary transition-all shadow-xl"
           />
-          <button 
+          <button
             type="submit"
             disabled={!question || isAsking}
             className="absolute right-2 top-1/2 -translate-y-1/2 md-icon-btn bg-md-primary text-md-on-primary hover:bg-md-primary/90 disabled:opacity-50 shadow-md h-10 w-10 md:h-12 md:w-12 flex items-center justify-center p-0"

@@ -1,7 +1,7 @@
-# Second Brain AI (v20260508.17)
+# Second Brain AI (v20260508.22)
 
-## 🔧 Configurazione Firebase & Gemini (Aggiornamento 2026-05-08.17)
-- **Fix Deploy (MIME type error):** Aggiunto lo script `gcp-build` nel `package.json` per forzare la compilazione dei file statici durante il deploy su Google Cloud Run. Questo risolve l'errore di caricamento dei moduli JavaScript causato dalla mancanza della cartella `dist` nel container di produzione.
+## 🔧 Configurazione Firebase & Gemini (Aggiornamento 2026-05-08.22)
+- **Ottimizzazione Layout:** Riposizionata la label del modello attivo (AI Model) per evitare sovrapposizioni con le informazioni dell'account su dispositivi mobili. Ora la label è integrata nell'header mobile e nella parte inferiore della sidebar su desktop, garantendo una leggibilità pulita su ogni schermo.
 
 
 A powerful personal knowledge management system that utilizes AI to index your thoughts, automate note connections, and provide context-aware answers to your questions.
