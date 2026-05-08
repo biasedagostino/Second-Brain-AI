@@ -1,0 +1,5 @@
+# Include .gitignore rules
+.gitignore
+
+# But explicitly include .env so Vite can use it during Cloud Build
+!.env

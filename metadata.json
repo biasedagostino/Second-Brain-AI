@@ -1,0 +1,6 @@
+{
+  "name": "Second Brain AI",
+  "description": "A personal second brain app with AI indexing, automatic note connections, and RAG-based Q&A, built with Material Design 3.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
