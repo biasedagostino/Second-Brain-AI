@@ -1,6 +1,10 @@
-# Second Brain AI (v20260508.22)
+# Second Brain AI (v20260511.04)
 
-## 🔧 Configurazione Firebase & Gemini (Aggiornamento 2026-05-08.22)
+## 🔧 Gestione Prompt Personalizzati (Aggiornamento 2026-05-11.04)
+- **Editor dei Prompt:** Aggiunta una nuova scheda nella sezione Configurazione che permette di visualizzare e modificare manualmente i prompt utilizzati dall'AI per l'indicizzazione, il Q&A e la generazione dei titoli.
+- **Persistenza Prompt:** I prompt personalizzati vengono salvati nel database (Firestore) e caricati automaticamente, permettendo un controllo totale sul comportamento del "Second Brain".
+- **Normalizzazione Tag:** Migliorato ulteriormente il sistema di tagging per garantire coerenza e riutilizzo dei tag esistenti.
+- **Interattività Knowledge Graph:** Migliorata l'evidenziazione dei nodi e dei percorsi attivi al click.
 - **Ottimizzazione Layout:** Riposizionata la label del modello attivo (AI Model) per evitare sovrapposizioni con le informazioni dell'account su dispositivi mobili. Ora la label è integrata nell'header mobile e nella parte inferiore della sidebar su desktop, garantendo una leggibilità pulita su ogni schermo.
 
 

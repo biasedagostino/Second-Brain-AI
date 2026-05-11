@@ -147,54 +147,77 @@ async function callAI(
   return response.text || "";
 }
 
-export async function indexContent(title: string, content: string, existingKeywords: string[], customPrompt?: string, onProgress?: (p: number) => void): Promise<IndexResponse> {
+export const DEFAULT_PROMPTS = {
+  indexing: `Analyze the following content for a "Second Brain" system.
+Title: {{title}}
+Content: {{content}}
+{{fileUrl ? '\\nFile reference: ' + fileUrl : ''}}
+
+Existing system keywords: {{existingKeywords}}
+
+{{customPrompt ? '\\nInstructions for correction/re-analysis: ' + customPrompt : ''}}
+
+Tasks:
+1. Fornisci un riassunto conciso (max 3 frasi) in ITALIANO. Assicurati di includere entità chiave come nomi di stati, organizzazioni, persone e date se presenti nel testo.
+2. Estrai 5-8 parole chiave (keywords) rilevanti che catturino l'essenza del contenuto e le entità geografiche/politiche citate.
+   - NORMALIZZAZIONE TAG (MOLTO IMPORTANTE): Analizza attentamente la lista "Existing system keywords". Se un concetto, un sinonimo o una categoria simile esiste già, DEVI USARE ESATTAMENTE quel tag esistente. 
+   - Esempio: se esiste "intelligenza artificiale" e il testo parla di "AI", usa "intelligenza artificiale". Se esiste "economia" e il testo parla di "finanza", valuta se usare "economia".
+   - Non creare nuovi tag se ne esistono di semanticamente affini.
+   - IMPORTANTE: DEVI restituire ALMENO 3 parole chiave in ogni caso.
+   - Mantieni i tag in minuscolo.
+3. Identifica 3 potenziali connessioni tematiche basate sulle parole chiave esistenti per facilitare la navigazione del grafo.
+{{fileUrl ? '\\nAnalizza anche il contenuto del file (se immagine o documento accessibile) fornito nel link sopra.' : ''}}
+
+Restituisci la risposta esclusivamente in formato JSON.
+NON includere alcuna formattazione markdown (nessun blocco di codice come \`\`\`json ... \`\`\`) o commenti.
+Restituisci solo l'oggetto JSON strutturato.`,
+  qa: `Sei un assistente AI "Second Brain". 
+Usa i seguenti frammenti di contesto indicizzato per rispondere alla domanda dell'utente in ITALIANO.
+Se il contesto non contiene la risposta, dillo educatamente all'utente, ma prova a trovare connessioni rilevanti se possibile.
+
+Domanda: {{question}}
+
+Contesto:
+{{context}}`,
+  title: `Genera un titolo breve, descrittivo e accattivante (max 3 parole) per il seguente contenuto, in ITALIANO:\n\n{{content}}`
+};
+
+export async function indexContent(
+  title: string, 
+  content: string, 
+  existingKeywords: string[], 
+  customPrompt?: string, 
+  onProgress?: (p: number) => void,
+  template?: string
+): Promise<IndexResponse> {
   const fileUrlMatch = content.match(/\[FILE: .*\]\((.*)\)/);
   const fileUrl = fileUrlMatch ? fileUrlMatch[1] : null;
 
-  const prompt = `
-    Analyze the following content for a "Second Brain" system.
-    Title: ${title}
-    Content: ${content}
-    ${fileUrl ? `\nFile reference: ${fileUrl}\n` : ''}
-    
-    Existing system keywords: ${existingKeywords.join(', ')}
-    
-    ${customPrompt ? `\nInstructions for correction/re-analysis: ${customPrompt}\n` : ''}
-    
-    Tasks:
-    1. Fornisci un riassunto conciso (max 3 frasi) in ITALIANO. Assicurati di includere entità chiave come nomi di stati, organizzazioni, persone e date se presenti nel testo.
-    2. Estrai 5-8 parole chiave (keywords) rilevanti che catturino l'essenza del contenuto e le entità geografiche/politiche citate.
-       - IMPORTANTE: Se una categoria simile o sinonimo esiste già in "Existing system keywords", USA ESATTAMENTE quella parola invece di crearne una nuova.
-       - IMPORTANTE: DEVI restituire ALMENO 3 parole chiave in ogni caso.
-       - Mantieni i tag in minuscolo.
-    3. Identifica 3 potenziali connessioni tematiche basate sulle parole chiave esistenti per facilitare la navigazione del grafo.
-    ${fileUrl ? '\nAnalizza anche il contenuto del file (se immagine o documento accessibile) fornito nel link sopra.' : ''}
-    
-    Restituisci la risposta esclusivamente in formato JSON.
-    NON includere alcuna formattazione markdown (nessun blocco di codice come \`\`\`json ... \`\`\`) o commenti.
-    Restituisci solo l'oggetto JSON strutturato.
-  `;
+  const tpl = template || DEFAULT_PROMPTS.indexing;
+  const prompt = tpl
+    .replace('{{title}}', title)
+    .replace('{{content}}', content)
+    .replace('{{existingKeywords}}', existingKeywords.join(', '))
+    .replace("{{fileUrl ? '\\nFile reference: ' + fileUrl : ''}}", fileUrl ? `\nFile reference: ${fileUrl}` : '')
+    .replace("{{customPrompt ? '\\nInstructions for correction/re-analysis: ' + customPrompt : ''}}", customPrompt ? `\nInstructions for correction/re-analysis: ${customPrompt}` : '')
+    .replace("{{fileUrl ? '\\nAnalizza anche il contenuto del file (se immagine o documento accessibile) fornito nel link sopra.' : ''}}", fileUrl ? '\nAnalizza anche il contenuto del file (se immagine o documento accessibile) fornito nel link sopra.' : '');
 
   const text = await callAI([{role: 'user', content: prompt}], false, onProgress);
   const jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
   return JSON.parse(jsonText || "{}");
 }
 
-export async function generateTitle(content: string, onProgress?: (p: number) => void): Promise<string> {
-  return await callAI([{role: 'user', content: `Genera un titolo breve, descrittivo e accattivante (max 3 parole) per il seguente contenuto, in ITALIANO:\n\n${content}`}], false, onProgress);
+export async function generateTitle(content: string, onProgress?: (p: number) => void, template?: string): Promise<string> {
+  const tpl = template || DEFAULT_PROMPTS.title;
+  const prompt = tpl.replace('{{content}}', content);
+  return await callAI([{role: 'user', content: prompt}], false, onProgress);
 }
 
-export async function askSecondBrain(question: string, context: string, onProgress?: (p: number) => void): Promise<string> {
-  const prompt = `
-    Sei un assistente AI "Second Brain". 
-    Usa i seguenti frammenti di contesto indicizzato per rispondere alla domanda dell'utente in ITALIANO.
-    Se il contesto non contiene la risposta, dillo educatamente all'utente, ma prova a trovare connessioni rilevanti se possibile.
-    
-    Domanda: ${question}
-    
-    Contesto:
-    ${context}
-  `;
+export async function askSecondBrain(question: string, context: string, onProgress?: (p: number) => void, template?: string): Promise<string> {
+  const tpl = template || DEFAULT_PROMPTS.qa;
+  const prompt = tpl
+    .replace('{{question}}', question)
+    .replace('{{context}}', context);
 
   return await callAI([{role: 'user', content: prompt}], true, onProgress);
 }

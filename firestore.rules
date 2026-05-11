@@ -18,7 +18,7 @@ service cloud.firestore {
     function isAuthorized() {
       // STRICT RESTRICTION: Only the user email provided in the prompt
       // We check email_verified to prevent spoofing as per Phase 5 test
-      return isOwner('damocle83@gmail.com') && (request.auth.token.email_verified == true);
+      return isOwner('solomessaggi808@gmail.com') && (request.auth.token.email_verified == true);
     }
 
     function isValidId(id) {
@@ -79,6 +79,14 @@ service cloud.firestore {
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'key', 'model', 'embedded']);
                         
         allow delete: if isAuthorized() && isValidId(keyId) && userId == request.auth.uid;
+    }
+
+    match /users/{userId}/prompts/{promptId} {
+        allow read, write: if isAuthorized() && userId == request.auth.uid;
+    }
+
+    match /users/{userId}/qa_history/{historyId} {
+        allow read, write: if isAuthorized() && userId == request.auth.uid;
     }
   }
 }

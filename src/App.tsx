@@ -18,11 +18,12 @@ import {
   serverTimestamp,
   doc,
   getDocs,
-  deleteDoc
+  deleteDoc,
+  limit
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { uploadToDrive } from './services/driveService';
-import { indexContent, askSecondBrain, generateTitle } from './lib/gemini';
+import { indexContent, askSecondBrain, generateTitle, DEFAULT_PROMPTS } from './lib/gemini';
 import { cn } from './lib/utils';
 import {
   Brain,
@@ -99,6 +100,8 @@ export default function App() {
   const [newKeyEmbedded, setNewKeyEmbedded] = useState(false);
   const [selectedApiKeyId, setSelectedApiKeyId] = useState(localStorage.getItem('selected_api_key_id') || '');
   const [editingKeyId, setEditingKeyId] = useState<string | null>(null);
+  const [settingsTab, setSettingsTab] = useState<'api' | 'prompts'>('api');
+  const [systemPrompts, setSystemPrompts] = useState<{ id: string, indexing: string, qa: string, title: string } | null>(null);
 
 
   useEffect(() => {
@@ -220,6 +223,41 @@ export default function App() {
       handleFirestoreError(error, OperationType.LIST, 'notes');
     });
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      const q = query(collection(db, 'users', user.uid, 'prompts'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+          addDoc(collection(db, 'users', user.uid, 'prompts'), {
+            indexing: DEFAULT_PROMPTS.indexing,
+            qa: DEFAULT_PROMPTS.qa,
+            title: DEFAULT_PROMPTS.title,
+            createdAt: serverTimestamp()
+          });
+        } else {
+          const doc = snapshot.docs[0];
+          setSystemPrompts({ id: doc.id, ...doc.data() } as any);
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
+  const updateSystemPrompts = async (data: any) => {
+    if (!user || !systemPrompts) return;
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'prompts', systemPrompts.id), {
+        indexing: data.indexing,
+        qa: data.qa,
+        title: data.title,
+        updatedAt: serverTimestamp()
+      });
+      setNotification({ title: 'Salvato', message: 'I prompt sono stati aggiornati con successo.', type: 'info' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'prompts');
+    }
+  };
 
   const handleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -602,6 +640,7 @@ export default function App() {
                   setDialog={setDialog}
                   setCurrentView={setCurrentView}
                   initialShowForm={notesStartWithForm}
+                  systemPrompts={systemPrompts}
                 />
               )}
 
@@ -615,6 +654,7 @@ export default function App() {
                   setProgress={setProgress}
                   setDialog={setDialog}
                   setCurrentView={setCurrentView}
+                  systemPrompts={systemPrompts}
                 />
               )}
 
@@ -642,55 +682,121 @@ export default function App() {
                   className="p-4 md:p-8 max-w-2xl mx-auto space-y-8"
                 >
                   <h2 className="text-3xl font-bold">Configurazione</h2>
-                  <div className="md-card space-y-4">
-                    <label className="block text-sm font-bold text-md-on-surface-variant">API Key OpenRouter</label>
-                    <div className="flex flex-col gap-2">
-                      {apiKeys.map(key => (
-                        <div key={key.id} className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            checked={selectedApiKeyId === key.id}
-                            onChange={() => setSelectedApiKeyId(key.id)}
-                          />
-                          <span className="flex-1 text-sm">{key.name} ({key.model})</span>
-                          <button onClick={() => deleteApiKey(key.id)} className="text-red-400">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => duplicateApiKey(key)} className="text-blue-400 text-xs">Dup</button>
-                          <button
-                            onClick={() => {
-                              setEditingKeyId(key.id);
-                              setNewKeyName(key.name);
-                              setNewKeyModel(key.model);
-                              setNewKeyValue(key.key);
-                              setNewKeyEmbedded(key.embedded);
-                            }}
-                            className="text-green-400 text-xs"
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="space-y-2 mt-4 pt-4 border-t border-md-outline/10">
-                      <input type="text" placeholder="Nome API Key" className="md-input w-full" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} />
-                      <input type="text" placeholder="Modello (es: nvidia/nemotron...)" className="md-input w-full" value={newKeyModel} onChange={(e) => setNewKeyModel(e.target.value)} />
-                      <input type="password" placeholder="sk-or-v1-..." className="md-input w-full" value={newKeyValue} onChange={(e) => setNewKeyValue(e.target.value)} />
-                      <label className="flex items-center gap-2 text-sm text-md-on-surface">
-                        <input type="checkbox" checked={newKeyEmbedded} onChange={(e) => setNewKeyEmbedded(e.target.checked)} />
-                        Embedded flag
-                      </label>
-                      {editingKeyId ? (
-                        <div className="flex gap-2">
-                          <button onClick={updateApiKey} className="md-btn-primary flex-1">Salva Modifiche</button>
-                          <button onClick={() => { setEditingKeyId(null); setNewKeyName(''); setNewKeyModel(''); setNewKeyValue(''); setNewKeyEmbedded(false); }} className="md-btn-secondary flex-1">Annulla</button>
-                        </div>
-                      ) : (
-                        <button onClick={addApiKey} className="md-btn-primary w-full">Aggiungi API Key</button>
-                      )}
-                    </div>
-                    <p className="text-xs text-md-outline">Seleziona l'API Key attiva da utilizzare.</p>
+                  
+                  <div className="flex gap-2 p-1 bg-md-surface-variant/20 rounded-2xl w-full max-w-md">
+                    <button 
+                      onClick={() => setSettingsTab('api')}
+                      className={cn("flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all", settingsTab === 'api' ? "bg-md-primary text-md-on-primary shadow-lg" : "text-md-on-surface-variant hover:bg-md-on-surface/5")}
+                    >
+                      API Keys
+                    </button>
+                    <button 
+                      onClick={() => setSettingsTab('prompts')}
+                      className={cn("flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all", settingsTab === 'prompts' ? "bg-md-primary text-md-on-primary shadow-lg" : "text-md-on-surface-variant hover:bg-md-on-surface/5")}
+                    >
+                      Prompt AI
+                    </button>
                   </div>
+
+                  {settingsTab === 'api' ? (
+                    <div className="md-card space-y-4">
+                      <label className="block text-sm font-bold text-md-on-surface-variant">API Key OpenRouter</label>
+                      <div className="flex flex-col gap-2">
+                        {apiKeys.map(key => (
+                          <div key={key.id} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              checked={selectedApiKeyId === key.id}
+                              onChange={() => setSelectedApiKeyId(key.id)}
+                            />
+                            <span className="flex-1 text-sm">{key.name} ({key.model})</span>
+                            <button onClick={() => deleteApiKey(key.id)} className="text-red-400">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => duplicateApiKey(key)} className="text-blue-400 text-xs">Dup</button>
+                            <button
+                              onClick={() => {
+                                setEditingKeyId(key.id);
+                                setNewKeyName(key.name);
+                                setNewKeyModel(key.model);
+                                setNewKeyValue(key.key);
+                                setNewKeyEmbedded(key.embedded);
+                              }}
+                              className="text-green-400 text-xs"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-2 mt-4 pt-4 border-t border-md-outline/10">
+                        <input type="text" placeholder="Nome API Key" className="md-input w-full" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} />
+                        <input type="text" placeholder="Modello (es: nvidia/nemotron...)" className="md-input w-full" value={newKeyModel} onChange={(e) => setNewKeyModel(e.target.value)} />
+                        <input type="password" placeholder="sk-or-v1-..." className="md-input w-full" value={newKeyValue} onChange={(e) => setNewKeyValue(e.target.value)} />
+                        <label className="flex items-center gap-2 text-sm text-md-on-surface">
+                          <input type="checkbox" checked={newKeyEmbedded} onChange={(e) => setNewKeyEmbedded(e.target.checked)} />
+                          Embedded flag
+                        </label>
+                        {editingKeyId ? (
+                          <div className="flex gap-2">
+                            <button onClick={updateApiKey} className="md-btn-primary flex-1">Salva Modifiche</button>
+                            <button onClick={() => { setEditingKeyId(null); setNewKeyName(''); setNewKeyModel(''); setNewKeyValue(''); setNewKeyEmbedded(false); }} className="md-btn-secondary flex-1">Annulla</button>
+                          </div>
+                        ) : (
+                          <button onClick={addApiKey} className="md-btn-primary w-full">Aggiungi API Key</button>
+                        )}
+                      </div>
+                      <p className="text-xs text-md-outline">Seleziona l'API Key attiva da utilizzare.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="md-card space-y-4">
+                        <div className="flex items-center gap-2 text-md-primary mb-2">
+                          <RefreshCw className="w-5 h-5" />
+                          <h3 className="font-bold">Prompt Indicizzazione</h3>
+                        </div>
+                        <textarea 
+                          className="md-input w-full min-h-[200px] text-xs font-mono"
+                          value={systemPrompts?.indexing || ''}
+                          onChange={(e) => setSystemPrompts(prev => prev ? { ...prev, indexing: e.target.value } : null)}
+                        />
+                        <p className="text-[10px] text-md-outline italic">Variabili disponibili: {"{{title}}, {{content}}, {{existingKeywords}}, {{customPrompt}}"}</p>
+                      </div>
+
+                      <div className="md-card space-y-4">
+                        <div className="flex items-center gap-2 text-md-primary mb-2">
+                          <Search className="w-5 h-5" />
+                          <h3 className="font-bold">Prompt Q&A (Cervello)</h3>
+                        </div>
+                        <textarea 
+                          className="md-input w-full min-h-[150px] text-xs font-mono"
+                          value={systemPrompts?.qa || ''}
+                          onChange={(e) => setSystemPrompts(prev => prev ? { ...prev, qa: e.target.value } : null)}
+                        />
+                        <p className="text-[10px] text-md-outline italic">Variabili disponibili: {"{{question}}, {{context}}"}</p>
+                      </div>
+
+                      <div className="md-card space-y-4">
+                        <div className="flex items-center gap-2 text-md-primary mb-2">
+                          <FileText className="w-5 h-5" />
+                          <h3 className="font-bold">Prompt Generazione Titolo</h3>
+                        </div>
+                        <textarea 
+                          className="md-input w-full min-h-[100px] text-xs font-mono"
+                          value={systemPrompts?.title || ''}
+                          onChange={(e) => setSystemPrompts(prev => prev ? { ...prev, title: e.target.value } : null)}
+                        />
+                        <p className="text-[10px] text-md-outline italic">Variabili disponibili: {"{{content}}"}</p>
+                      </div>
+
+                      <button 
+                        onClick={() => updateSystemPrompts(systemPrompts)}
+                        className="md-btn-primary w-full py-4 shadow-xl"
+                      >
+                        Salva Tutti i Prompt
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -776,7 +882,7 @@ function NavItem({ active, onClick, icon, label }: { active: boolean; onClick: (
   );
 }
 
-function ExpandableNote({ note, onClose, setProgress }: { note: Note; onClose: () => void; setProgress: (p: number) => void }) {
+function ExpandableNote({ note, onClose, setProgress, systemPrompts }: { note: Note; onClose: () => void; setProgress: (p: number) => void; systemPrompts: any }) {
   const [prompt, setPrompt] = useState('');
   const [isReanalyzing, setIsReanalyzing] = useState(false);
 
@@ -788,7 +894,14 @@ function ExpandableNote({ note, onClose, setProgress }: { note: Note; onClose: (
       setProgress(40);
       const allKeywords = Array.from(new Set(all.docs.flatMap(d => d.data().keywords)));
       setProgress(60);
-      const result = await indexContent(note.title, note.content, allKeywords, prompt, (p) => setProgress(60 + p * 0.3));
+      const result = await indexContent(
+        note.title, 
+        note.content, 
+        allKeywords, 
+        prompt, 
+        (p) => setProgress(60 + p * 0.3),
+        systemPrompts?.indexing
+      );
       setProgress(90);
 
       await updateDoc(doc(db, 'notes', note.id), {
@@ -864,7 +977,7 @@ function ExpandableNote({ note, onClose, setProgress }: { note: Note; onClose: (
   );
 }
 
-function NoteCard({ note, setNotification, setProgress }: { note: Note; setNotification: (v: any) => void; setProgress: (p: number) => void }) {
+function NoteCard({ note, setNotification, setProgress, systemPrompts }: { note: Note; setNotification: (v: any) => void; setProgress: (p: number) => void; systemPrompts: any }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -952,13 +1065,13 @@ function NoteCard({ note, setNotification, setProgress }: { note: Note; setNotif
       </button>
 
       <AnimatePresence>
-        {isExpanded && <ExpandableNote note={note} onClose={() => setIsExpanded(false)} setProgress={setProgress} />}
+        {isExpanded && <ExpandableNote note={note} onClose={() => setIsExpanded(false)} setProgress={setProgress} systemPrompts={systemPrompts} />}
       </AnimatePresence>
     </motion.div>
   );
 }
 
-function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, setNotification, setProgress, setDialog, setCurrentView, initialShowForm = false }: {
+function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, setNotification, setProgress, setDialog, setCurrentView, initialShowForm = false, systemPrompts }: {
   onClose: () => void;
   user: User;
   existingNotes: Note[];
@@ -969,6 +1082,7 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
   setDialog: (v: any) => void;
   setCurrentView: (v: View) => void;
   initialShowForm?: boolean;
+  systemPrompts: any;
 }) {
   const [showForm, setShowForm] = useState(initialShowForm);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1050,7 +1164,7 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
 
       setProgress(30);
       if (!finalTitle) {
-        finalTitle = await generateTitle(finalContent, (p) => setProgress(30 + p * 0.1));
+        finalTitle = await generateTitle(finalContent, (p) => setProgress(30 + p * 0.1), systemPrompts?.title);
       }
 
       const allKeywords = Array.from(new Set(existingNotes.flatMap(n => n.keywords)));
@@ -1059,7 +1173,8 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
         finalContent,
         allKeywords,
         type === 'website' ? "Analizza questo sito web. Estrai gli argomenti centrali, i concetti chiave e i temi principali trattati nella pagina." : undefined,
-        (p) => setProgress(40 + p * 0.6)
+        (p) => setProgress(40 + p * 0.6),
+        systemPrompts?.indexing
       );
       console.log("AI Result:", resultRaw);
       const result = typeof resultRaw === 'string' ? JSON.parse(resultRaw) : resultRaw;
@@ -1220,7 +1335,7 @@ function NotesView({ onClose, user, existingNotes, setIsIndexing, isIndexing, se
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {filteredNotes.map(note => (
-              <NoteCard key={note.id} note={note} setNotification={setNotification} setProgress={setProgress} />
+              <NoteCard key={note.id} note={note} setNotification={setNotification} setProgress={setProgress} systemPrompts={systemPrompts} />
             ))}
           </div>
 
@@ -1252,7 +1367,7 @@ function TypeSelector({ selected, onClick, icon, label }: { selected: boolean; o
   );
 }
 
-function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgress, setDialog, setCurrentView }: {
+function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgress, setDialog, setCurrentView, systemPrompts }: {
   notes: Note[];
   user: User;
   isAsking: boolean;
@@ -1261,6 +1376,7 @@ function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgre
   setProgress: (p: number) => void;
   setDialog: (v: any) => void;
   setCurrentView: (v: View) => void;
+  systemPrompts: any;
 }) {
   const [question, setQuestion] = useState('');
   const [result, setResult] = useState<{ q: string; a: string } | null>(null);
@@ -1273,13 +1389,36 @@ function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgre
     }
   }, [result]);
 
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, 'users', user.uid, 'qa_history'),
+      orderBy('createdAt', 'desc'),
+      limit(1)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data();
+        setResult({ q: data.q, a: data.a });
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   const handleSaveAsNote = async () => {
     if (!result || isSaving) return;
     setIsSaving(true);
     setProgress(30);
     try {
       const allKeywords = Array.from(new Set(notes.flatMap(n => n.keywords)));
-      const resultRaw = await indexContent(`Risposta AI: ${result.q.slice(0, 30)}...`, result.a, allKeywords, undefined, (p) => setProgress(30 + p * 0.7));
+      const resultRaw = await indexContent(
+        `Risposta AI: ${result.q.slice(0, 30)}...`, 
+        result.a, 
+        allKeywords, 
+        undefined, 
+        (p) => setProgress(30 + p * 0.7),
+        systemPrompts?.indexing
+      );
       const indexed = typeof resultRaw === 'string' ? JSON.parse(resultRaw) : resultRaw;
 
       await addDoc(collection(db, 'notes'), {
@@ -1334,8 +1473,21 @@ function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgre
     try {
       const context = notes.map(n => `TITLE: ${n.title}\nSUMMARY: ${n.summary}\nKEYWORDS: ${n.keywords.join(',')}`).join('\n\n');
       setProgress(50);
-      const answer = await askSecondBrain(question, context, (p) => setProgress(50 + p * 0.5));
+      const answer = await askSecondBrain(
+        question, 
+        context, 
+        (p) => setProgress(50 + p * 0.5),
+        systemPrompts?.qa
+      );
       setProgress(100);
+      
+      // Salva l'ultima domanda e risposta nel DB
+      await addDoc(collection(db, 'users', user.uid, 'qa_history'), {
+        q: question,
+        a: answer,
+        createdAt: serverTimestamp()
+      });
+
       setResult({ q: question, a: answer });
       setQuestion('');
     } catch (error: any) {
