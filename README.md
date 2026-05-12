@@ -1,4 +1,9 @@
-# Second Brain AI (v20260512.02)
+# Second Brain AI (v20260512.03)
+
+## 🧠 Potenziamento Connessioni Semantiche (Aggiornamento 2026-05-12.03)
+- **Prompt Strutturato:** Ottimizzato il motore di indicizzazione con uno schema JSON rigoroso per garantire che le connessioni suggerite dall'AI siano sempre consistenti con la struttura dati del sistema.
+- **Raffinamento "suggestedConnections":** Migliorata la logica di associazione tra le nuove note e quelle esistenti, forzando l'AI a cercare attivamente punti di contatto all'interno del database di tag già presenti.
+- **Normalizzazione Tag Avanzata:** Incrementata l'accuratezza nella deduplicazione dei tag, riducendo la frammentazione nel grafo della conoscenza.
 
 ## 🔗 Link Cliccabili e Markdown (Aggiornamento 2026-05-12.02)
 - **Supporto Bare URLs:** Implementato il plugin `remark-gfm` per rendere automaticamente cliccabili i link testuali (es. https://...) inseriti nelle note o generati dall'AI.

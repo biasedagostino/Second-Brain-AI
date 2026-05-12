@@ -165,10 +165,17 @@ Tasks:
    - Non creare nuovi tag se ne esistono di semanticamente affini.
    - IMPORTANTE: DEVI restituire ALMENO 3 parole chiave in ogni caso.
    - Mantieni i tag in minuscolo.
-3. Identifica 3 potenziali connessioni tematiche basate sulle parole chiave esistenti per facilitare la navigazione del grafo.
+3. Identifica 3 "suggestedConnections": parole chiave (preferibilmente scelte tra "Existing system keywords") che permettano di collegare questa nota ad altre memorie già presenti. Se un argomento è correlato a un tag esistente, includi quel tag qui.
+
 {{fileUrl ? '\\nAnalizza anche il contenuto del file (se immagine o documento accessibile) fornito nel link sopra.' : ''}}
 
-Restituisci la risposta esclusivamente in formato JSON.
+Restituisci la risposta esclusivamente in formato JSON con questa struttura esatta:
+{
+  "summary": "...",
+  "keywords": ["tag1", "tag2", ...],
+  "suggestedConnections": ["tagA", "tagB", ...]
+}
+
 NON includere alcuna formattazione markdown (nessun blocco di codice come \`\`\`json ... \`\`\`) o commenti.
 Restituisci solo l'oggetto JSON strutturato.`,
   qa: `Sei un assistente AI "Second Brain". 
