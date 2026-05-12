@@ -1,11 +1,14 @@
-# Second Brain AI (v20260511.04)
+# Second Brain AI (v20260512.02)
 
-## 🔧 Gestione Prompt Personalizzati (Aggiornamento 2026-05-11.04)
-- **Editor dei Prompt:** Aggiunta una nuova scheda nella sezione Configurazione che permette di visualizzare e modificare manualmente i prompt utilizzati dall'AI per l'indicizzazione, il Q&A e la generazione dei titoli.
-- **Persistenza Prompt:** I prompt personalizzati vengono salvati nel database (Firestore) e caricati automaticamente, permettendo un controllo totale sul comportamento del "Second Brain".
-- **Normalizzazione Tag:** Migliorato ulteriormente il sistema di tagging per garantire coerenza e riutilizzo dei tag esistenti.
-- **Interattività Knowledge Graph:** Migliorata l'evidenziazione dei nodi e dei percorsi attivi al click.
-- **Ottimizzazione Layout:** Riposizionata la label del modello attivo (AI Model) per evitare sovrapposizioni con le informazioni dell'account su dispositivi mobili. Ora la label è integrata nell'header mobile e nella parte inferiore della sidebar su desktop, garantendo una leggibilità pulita su ogni schermo.
+## 🔗 Link Cliccabili e Markdown (Aggiornamento 2026-05-12.02)
+- **Supporto Bare URLs:** Implementato il plugin `remark-gfm` per rendere automaticamente cliccabili i link testuali (es. https://...) inseriti nelle note o generati dall'AI.
+- **Navigazione Esterna Sicura:** Tutti i link vengono ora aperti automaticamente in una nuova scheda (`target="_blank"`) con attributi di sicurezza (`rel="noopener noreferrer"`), evitando di abbandonare il portale.
+- **Miglioramento Rendering:** Ottimizzato il rendering markdown per supportare tabelle, liste di controllo e altre funzionalità GFM (GitHub Flavored Markdown).
+
+## 📱 Ottimizzazione Mobile (Aggiornamento 2026-05-12.01)
+- **Risoluzione Problemi Visibilità:** Corretto un bug critico nel layout CSS che rendeva l'applicativo non visibile su alcuni smartphone. Implementato l'utilizzo di `h-svh` (Small Viewport Height) per gestire correttamente le barre degli strumenti dei browser mobili (Safari, Chrome).
+- **Contenitore Flex-Responsive:** Aggiornato il contenitore principale per supportare correttamente l'alternanza tra visualizzazione mobile (colonna) e desktop (riga), garantendo che il contenuto occupi sempre lo spazio corretto senza clipping.
+- **Miglioramento Scrolling:** Ottimizzata la gestione dell'overflow per assicurare una navigazione fluida e reattiva su schermi touch.
 
 
 A powerful personal knowledge management system that utilizes AI to index your thoughts, automate note connections, and provide context-aware answers to your questions.

@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -289,7 +290,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-md-surface flex overflow-hidden">
+    <div className="h-svh bg-md-surface flex flex-col lg:flex-row overflow-hidden">
       {progress > 0 && progress < 100 && (
         <div className="fixed top-0 left-0 h-1 bg-md-primary z-[200] transition-all" style={{ width: `${progress}%` }} />
       )}
@@ -335,7 +336,7 @@ export default function App() {
       </AnimatePresence>
 
       {!user ? (
-        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-md-surface p-6">
+        <div className="h-svh w-full flex flex-col items-center justify-center bg-md-surface p-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -429,7 +430,7 @@ export default function App() {
           </nav>
 
           {/* Main Content */}
-          <main className="flex-1 h-screen overflow-y-auto relative bg-md-surface pb-24 lg:pb-0">
+          <main className="flex-1 h-full overflow-y-auto relative bg-md-surface pb-24 lg:pb-0">
             {/* Mobile Header */}
             <header className="lg:hidden flex items-center justify-between px-6 py-4 border-b border-md-outline/10 bg-md-surface/80 backdrop-blur-xl sticky top-0 z-30">
               <div className="flex items-center gap-3">
@@ -970,7 +971,14 @@ function ExpandableNote({ note, onClose, setProgress, systemPrompts }: { note: N
           </div>
         </div>
         <div className="markdown-body prose prose-invert max-w-none">
-          <ReactMarkdown>{note.content}</ReactMarkdown>
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={{
+              a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-md-primary underline hover:opacity-80 transition-opacity" />
+            }}
+          >
+            {note.content}
+          </ReactMarkdown>
         </div>
       </motion.div>
     </div>
@@ -1549,7 +1557,14 @@ function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgre
                   <span className="text-[10px] font-bold uppercase tracking-widest">Risposta Generata</span>
                 </div>
                 <div className="markdown-body prose prose-invert overflow-hidden text-sm md:text-base">
-                  <ReactMarkdown>{result.a}</ReactMarkdown>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-md-primary underline hover:opacity-80 transition-opacity" />
+                    }}
+                  >
+                    {result.a}
+                  </ReactMarkdown>
                 </div>
               </div>
 
