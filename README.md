@@ -1,4 +1,30 @@
-# Second Brain AI (v20260512.03)
+# Second Brain AI (v20260512.09)
+
+## 🛡️ Protezione Salvataggio Duplicati (Aggiornamento 2026-05-12.09)
+- **Controllo Concorrenza:** Implementato uno stato di caricamento (`isSavingInsight`) che disabilita i pulsanti e i menu a tendina durante il salvataggio di un approfondimento nella Wiki.
+- **Prevenzione Note Doppie:** Risolto un problema che poteva causare la creazione di più documenti identici in caso di clic multipli o interazioni rapide durante l'indicizzazione AI.
+
+## 📖 Lettura Estesa nella Wiki (Aggiornamento 2026-05-12.08)
+- **Modalità Lettura:** Abilitata la possibilità di cliccare sulle voci della Wiki per aprirle in modalità estesa.
+- **Coerenza UI:** Integrato il componente `ExpandableNote` anche nel modulo Wiki, permettendo di leggere il contenuto completo, visualizzare i tag e avviare una ri-analisi IA direttamente dalla Wiki.
+
+## ⚙️ Configurazione Prompt Ricerca (Aggiornamento 2026-05-12.07)
+- **Prompt AI Esteso:** Aggiunta la possibilità di personalizzare il prompt utilizzato per la "Ricerca Wiki" nella sezione Impostazioni.
+- **Sincronizzazione Cloud:** Il nuovo prompt è ora salvato e sincronizzato su Firestore per ogni utente autorizzato.
+- **Variabili Dinamiche:** Supporto per la variabile `{{topic}}` nel prompt di ricerca per definire come l'AI deve analizzare i temi online.
+
+## 📚 Nuova Funzione Wiki & Ricerca Online (Aggiornamento 2026-05-12.06)
+- **Modulo Wiki:** Introdotta una nuova sezione "Wiki" per l'organizzazione strutturata della conoscenza. Le note sono ora catalogate per categorie (tag) con una navigazione laterale dedicata.
+- **Ricerca Approfondimenti Online:** Implementata la possibilità di effettuare ricerche di approfondimento direttamente dal portale. L'AI analizza il web (simulato) per fornire nuovi dati su temi specifici.
+- **Note di Approfondimento:** I risultati della ricerca possono essere salvati come nuove voci della Wiki o collegati direttamente come "approfondimenti" a note già esistenti, creando una gerarchia di conoscenza.
+
+## 🔧 Fix TypeScript Environment Types (Aggiornamento 2026-05-12.05)
+- **Definizioni Vite:** Aggiunto il file `vite-env.d.ts` per risolvere l'errore di compilazione TypeScript relativo a `import.meta.env`.
+
+## 🛠️ Correzione Ri-analisi AI (Aggiornamento 2026-05-12.04)
+- **Robustezza Parsing JSON:** Implementata una logica di estrazione JSON più resiliente in `indexContent` per gestire risposte AI che includono testo extra prima o dopo l'oggetto JSON.
+- **Feedback Utente:** Aggiunta la gestione degli errori e notifiche (alert) nel processo di ri-analisi per informare l'utente in caso di fallimento del servizio.
+- **Validazione Risultati:** Inseriti controlli di tipo e validità sui dati restituiti dall'AI per prevenire sovrascritture di dati vuoti o corrotti in Firestore.
 
 ## 🧠 Potenziamento Connessioni Semantiche (Aggiornamento 2026-05-12.03)
 - **Prompt Strutturato:** Ottimizzato il motore di indicizzazione con uno schema JSON rigoroso per garantire che le connessioni suggerite dall'AI siano sempre consistenti con la struttura dati del sistema.

@@ -186,7 +186,16 @@ Domanda: {{question}}
 
 Contesto:
 {{context}}`,
-  title: `Genera un titolo breve, descrittivo e accattivante (max 3 parole) per il seguente contenuto, in ITALIANO:\n\n{{content}}`
+  title: `Genera un titolo breve, descrittivo e accattivante (max 3 parole) per il seguente contenuto, in ITALIANO:\n\n{{content}}`,
+  research: `Agisci come un ricercatore esperto. Cerca informazioni approfondite online sul tema: "{{topic}}". 
+Restituisci 3 approfondimenti distinti, ognuno con un titolo e un contenuto dettagliato in formato markdown.
+Formato risposta:
+APPROFONDIMENTO 1
+TITOLO: ...
+CONTENUTO: ...
+---
+APPROFONDIMENTO 2
+...`
 };
 
 export async function indexContent(
@@ -210,8 +219,24 @@ export async function indexContent(
     .replace("{{fileUrl ? '\\nAnalizza anche il contenuto del file (se immagine o documento accessibile) fornito nel link sopra.' : ''}}", fileUrl ? '\nAnalizza anche il contenuto del file (se immagine o documento accessibile) fornito nel link sopra.' : '');
 
   const text = await callAI([{role: 'user', content: prompt}], false, onProgress);
-  const jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-  return JSON.parse(jsonText || "{}");
+  
+  // Robust JSON extraction
+  let jsonText = text;
+  const startIdx = text.indexOf('{');
+  const endIdx = text.lastIndexOf('}');
+  
+  if (startIdx !== -1 && endIdx !== -1) {
+    jsonText = text.substring(startIdx, endIdx + 1);
+  } else {
+    jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  }
+  
+  try {
+    return JSON.parse(jsonText || "{}");
+  } catch (e) {
+    console.error("Failed to parse AI JSON:", jsonText);
+    return {} as IndexResponse;
+  }
 }
 
 export async function generateTitle(content: string, onProgress?: (p: number) => void, template?: string): Promise<string> {
@@ -226,5 +251,11 @@ export async function askSecondBrain(question: string, context: string, onProgre
     .replace('{{question}}', question)
     .replace('{{context}}', context);
 
+  return await callAI([{role: 'user', content: prompt}], true, onProgress);
+}
+
+export async function researchOnline(topic: string, onProgress?: (p: number) => void, template?: string): Promise<string> {
+  const tpl = template || DEFAULT_PROMPTS.research;
+  const prompt = tpl.replace('{{topic}}', topic);
   return await callAI([{role: 'user', content: prompt}], true, onProgress);
 }

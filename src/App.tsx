@@ -23,7 +23,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { uploadToDrive } from './services/driveService';
-import { indexContent, askSecondBrain, generateTitle, DEFAULT_PROMPTS } from './lib/gemini';
+import { indexContent, askSecondBrain, generateTitle, researchOnline, DEFAULT_PROMPTS } from './lib/gemini';
 import { cn } from './lib/utils';
 import {
   Brain,
@@ -42,7 +42,8 @@ import {
   Trash2,
   ArrowLeft,
   Settings,
-  RefreshCw
+  RefreshCw,
+  BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -56,7 +57,7 @@ import { APP_VERSION } from './version';
 const AUTHORIZED_EMAIL = 'solomessaggi808@gmail.com';
 const PORTAL_VERSION = APP_VERSION;
 
-type View = 'dashboard' | 'notes' | 'qa' | 'graph' | 'settings';
+type View = 'dashboard' | 'notes' | 'qa' | 'graph' | 'settings' | 'wiki';
 
 interface Note {
   id: string;
@@ -68,6 +69,7 @@ interface Note {
   connections: string[];
   createdAt: any;
   userId: string;
+  parentId?: string;
 }
 
 export default function App() {
@@ -102,7 +104,7 @@ export default function App() {
   const [selectedApiKeyId, setSelectedApiKeyId] = useState(localStorage.getItem('selected_api_key_id') || '');
   const [editingKeyId, setEditingKeyId] = useState<string | null>(null);
   const [settingsTab, setSettingsTab] = useState<'api' | 'prompts'>('api');
-  const [systemPrompts, setSystemPrompts] = useState<{ id: string, indexing: string, qa: string, title: string } | null>(null);
+  const [systemPrompts, setSystemPrompts] = useState<{ id: string, indexing: string, qa: string, title: string, research: string } | null>(null);
 
 
   useEffect(() => {
@@ -234,6 +236,7 @@ export default function App() {
             indexing: DEFAULT_PROMPTS.indexing,
             qa: DEFAULT_PROMPTS.qa,
             title: DEFAULT_PROMPTS.title,
+            research: DEFAULT_PROMPTS.research,
             createdAt: serverTimestamp()
           });
         } else {
@@ -252,6 +255,7 @@ export default function App() {
         indexing: data.indexing,
         qa: data.qa,
         title: data.title,
+        research: data.research,
         updatedAt: serverTimestamp()
       });
       setNotification({ title: 'Salvato', message: 'I prompt sono stati aggiornati con successo.', type: 'info' });
@@ -393,6 +397,12 @@ export default function App() {
                 onClick={() => setCurrentView('graph')}
                 icon={<TrendingUp className="w-5 h-5" />}
                 label="Knowledge"
+              />
+              <NavItem
+                active={currentView === 'wiki'}
+                onClick={() => setCurrentView('wiki')}
+                icon={<BookOpen className="w-5 h-5" />}
+                label="Wiki"
               />
               <NavItem
                 active={currentView === 'settings'}
@@ -674,6 +684,17 @@ export default function App() {
                   <KnowledgeGraph notes={notes} />
                 </motion.div>
               )}
+              {currentView === 'wiki' && (
+                <WikiView
+                  notes={notes}
+                  user={user!}
+                  setNotification={setNotification}
+                  setProgress={setProgress}
+                  setDialog={setDialog}
+                  setCurrentView={setCurrentView}
+                  systemPrompts={systemPrompts}
+                />
+              )}
               {currentView === 'settings' && (
                 <motion.div
                   key="settings"
@@ -790,6 +811,19 @@ export default function App() {
                         <p className="text-[10px] text-md-outline italic">Variabili disponibili: {"{{content}}"}</p>
                       </div>
 
+                      <div className="md-card space-y-4">
+                        <div className="flex items-center gap-2 text-md-primary mb-2">
+                          <Brain className="w-5 h-5" />
+                          <h3 className="font-bold">Prompt Ricerca Wiki (Online)</h3>
+                        </div>
+                        <textarea 
+                          className="md-input w-full min-h-[150px] text-xs font-mono"
+                          value={systemPrompts?.research || ''}
+                          onChange={(e) => setSystemPrompts(prev => prev ? { ...prev, research: e.target.value } : null)}
+                        />
+                        <p className="text-[10px] text-md-outline italic">Variabili disponibili: {"{{topic}}"}</p>
+                      </div>
+
                       <button 
                         onClick={() => updateSystemPrompts(systemPrompts)}
                         className="md-btn-primary w-full py-4 shadow-xl"
@@ -816,6 +850,9 @@ export default function App() {
             </button>
             <button onClick={() => setCurrentView('graph')} className={cn("p-3 rounded-full transition-all flex flex-col items-center", currentView === 'graph' ? "bg-md-primary-container text-md-on-primary-container" : "text-md-on-surface-variant hover:bg-md-on-surface/5")}>
               <TrendingUp className="w-6 h-6" />
+            </button>
+            <button onClick={() => setCurrentView('wiki')} className={cn("p-3 rounded-full transition-all flex flex-col items-center", currentView === 'wiki' ? "bg-md-primary-container text-md-on-primary-container" : "text-md-on-surface-variant hover:bg-md-on-surface/5")}>
+              <BookOpen className="w-6 h-6" />
             </button>
             <button onClick={() => setCurrentView('settings')} className={cn("p-3 rounded-full transition-all flex flex-col items-center", currentView === 'settings' ? "bg-md-primary-container text-md-on-primary-container" : "text-md-on-surface-variant hover:bg-md-on-surface/5")}>
               <Settings className="w-6 h-6" />
@@ -893,9 +930,9 @@ function ExpandableNote({ note, onClose, setProgress, systemPrompts }: { note: N
     try {
       const all = await getDocs(query(collection(db, 'notes'), where('userId', '==', note.userId)));
       setProgress(40);
-      const allKeywords = Array.from(new Set(all.docs.flatMap(d => d.data().keywords)));
+      const allKeywords = Array.from(new Set(all.docs.flatMap(d => d.data().keywords || [])));
       setProgress(60);
-      const result = await indexContent(
+      const resultRaw = await indexContent(
         note.title, 
         note.content, 
         allKeywords, 
@@ -903,6 +940,13 @@ function ExpandableNote({ note, onClose, setProgress, systemPrompts }: { note: N
         (p) => setProgress(60 + p * 0.3),
         systemPrompts?.indexing
       );
+      
+      const result = typeof resultRaw === 'string' ? JSON.parse(resultRaw) : resultRaw;
+      
+      if (!result || (!result.summary && (!result.keywords || result.keywords.length === 0))) {
+        throw new Error("L'intelligenza artificiale non ha restituito dati validi.");
+      }
+
       setProgress(90);
 
       await updateDoc(doc(db, 'notes', note.id), {
@@ -913,8 +957,9 @@ function ExpandableNote({ note, onClose, setProgress, systemPrompts }: { note: N
       });
       setProgress(100);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      alert("Errore durante la ri-analisi: " + (error.message || "Riprova più tardi"));
     } finally {
       setIsReanalyzing(false);
       setProgress(0);
@@ -1607,6 +1652,246 @@ function QaView({ notes, user, isAsking, setIsAsking, setNotification, setProgre
           </button>
         </form>
       </div>
+    </div>
+  );
+}
+
+function WikiView({ notes, user, setNotification, setProgress, setDialog, setCurrentView, systemPrompts }: {
+  notes: Note[];
+  user: User;
+  setNotification: (v: any) => void;
+  setProgress: (p: number) => void;
+  setDialog: (v: any) => void;
+  setCurrentView: (v: View) => void;
+  systemPrompts: any;
+}) {
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isResearching, setIsResearching] = useState(false);
+  const [insights, setInsights] = useState<{ title: string; content: string; url?: string }[]>([]);
+  const [expandedNote, setExpandedNote] = useState<Note | null>(null);
+  const [isSavingInsight, setIsSavingInsight] = useState(false);
+
+  const tags = Array.from(new Set(notes.flatMap(n => n.keywords))).sort();
+  const filteredNotes = notes.filter(n => !selectedTag || n.keywords.includes(selectedTag));
+
+  const handleResearch = async () => {
+    if (!searchQuery || isResearching) return;
+    setIsResearching(true);
+    setProgress(10);
+    try {
+      setProgress(30);
+      const result = await researchOnline(searchQuery, (p) => setProgress(30 + p * 0.6), systemPrompts?.research);
+      setProgress(90);
+
+      const parts = result.split('---');
+      const parsedInsights = parts.map(p => {
+        const titleMatch = p.match(/TITOLO:\s*(.*)/);
+        const contentMatch = p.match(/CONTENUTO:\s*([\s\S]*)/);
+        return {
+          title: titleMatch ? titleMatch[1].trim() : 'Approfondimento',
+          content: contentMatch ? contentMatch[1].trim() : p.trim()
+        };
+      }).filter(i => i.content.length > 10);
+
+      setInsights(parsedInsights);
+    } catch (error) {
+      console.error(error);
+      setNotification({ title: 'Errore', message: 'Impossibile completare la ricerca online.', type: 'error' });
+    } finally {
+      setIsResearching(false);
+      setProgress(0);
+    }
+  };
+
+  const saveInsight = async (insight: { title: string; content: string }, parentId?: string) => {
+    if (isSavingInsight) return;
+    setIsSavingInsight(true);
+    setProgress(30);
+    try {
+      const allKeywords = Array.from(new Set(notes.flatMap(n => n.keywords)));
+      const resultRaw = await indexContent(
+        insight.title, 
+        insight.content, 
+        allKeywords, 
+        "Crea un approfondimento per questo tema.", 
+        (p) => setProgress(30 + p * 0.6),
+        systemPrompts?.indexing
+      );
+      const result = typeof resultRaw === 'string' ? JSON.parse(resultRaw) : resultRaw;
+
+      await addDoc(collection(db, 'notes'), {
+        title: `WIKI: ${insight.title}`,
+        content: insight.content,
+        summary: result.summary || '',
+        type: 'note',
+        keywords: [...(result.keywords || []), 'wiki', 'insight'],
+        connections: result.suggestedConnections || [],
+        userId: user.uid,
+        userEmail: user.email,
+        parentId: parentId || null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setNotification({ title: 'Salvato!', message: 'Approfondimento aggiunto alla tua Wiki.', type: 'success' });
+      setInsights(prev => prev.filter(i => i.title !== insight.title));
+    } catch (error) {
+      console.error(error);
+      setNotification({ title: 'Errore', message: 'Impossibile salvare l\'approfondimento.', type: 'error' });
+    } finally {
+      setIsSavingInsight(false);
+      setProgress(0);
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col md:flex-row overflow-hidden">
+      {/* Sidebar Tag */}
+      <aside className="w-full md:w-64 bg-md-surface-variant/10 border-r border-md-outline/10 p-6 overflow-y-auto space-y-6">
+        <div className="flex items-center gap-2 text-md-primary mb-4">
+          <Tag className="w-5 h-5" />
+          <h3 className="font-bold uppercase tracking-widest text-xs">Categorie Wiki</h3>
+        </div>
+        <div className="space-y-1">
+          <button
+            onClick={() => setSelectedTag(null)}
+            className={cn("w-full text-left px-4 py-2 rounded-xl text-sm transition-all", !selectedTag ? "bg-md-primary text-md-on-primary font-bold shadow-lg" : "text-md-on-surface-variant hover:bg-md-on-surface/5")}
+          >
+            Tutte le voci
+          </button>
+          {tags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => setSelectedTag(tag)}
+              className={cn("w-full text-left px-4 py-2 rounded-xl text-sm transition-all uppercase tracking-tighter", selectedTag === tag ? "bg-md-primary text-md-on-primary font-bold shadow-lg" : "text-md-on-surface-variant hover:bg-md-on-surface/5")}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Research Bar */}
+        <div className="p-4 md:p-8 border-b border-md-outline/10 bg-md-surface/50 backdrop-blur-md">
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            <div className="flex-1 relative w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-md-outline" />
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleResearch()}
+                placeholder="Cerca approfondimenti online su un tema..."
+                className="md-input w-full pl-12 pr-4 py-3"
+              />
+            </div>
+            <button
+              onClick={handleResearch}
+              disabled={!searchQuery || isResearching}
+              className="md-btn-primary whitespace-nowrap w-full md:w-auto"
+            >
+              {isResearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+              Ricerca Online
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+          {/* Research Results */}
+          {insights.length > 0 && (
+            <section className="space-y-4">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Brain className="w-6 h-6 text-md-primary" />
+                Risultati Ricerca Online
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {insights.map((insight, idx) => (
+                  <div key={idx} className="md-card p-6 border-md-primary/30 bg-md-primary/5 flex flex-col h-full">
+                    <h4 className="font-bold text-lg mb-3">{insight.title}</h4>
+                    <div className="text-sm text-md-on-surface-variant/80 line-clamp-4 mb-4 flex-1">
+                      {insight.content}
+                    </div>
+                    <div className="space-y-2 mt-auto">
+                      <button
+                        onClick={() => saveInsight(insight)}
+                        disabled={isSavingInsight}
+                        className="w-full md-btn-primary py-2 text-xs disabled:opacity-50"
+                      >
+                        {isSavingInsight ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : 'Salva nella Wiki'}
+                      </button>
+                      <select 
+                        onChange={(e) => saveInsight(insight, e.target.value)}
+                        disabled={isSavingInsight}
+                        className="w-full bg-transparent border border-md-outline/20 rounded-lg p-2 text-[10px] text-md-on-surface-variant disabled:opacity-50"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Collega a una nota...</option>
+                        {notes.slice(0, 20).map(n => (
+                          <option key={n.id} value={n.id}>{n.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Cataloged Notes */}
+          <section className="space-y-4">
+            <h3 className="text-xl font-bold">
+              {selectedTag ? `Voci per #${selectedTag}` : 'Catalogo Wiki'}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredNotes.map(note => (
+                <div 
+                  key={note.id} 
+                  onClick={() => setExpandedNote(note)}
+                  className="md-card group cursor-pointer hover:border-md-primary/50 transition-all p-6 space-y-4"
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-bold text-md-primary uppercase tracking-widest">{note.type}</span>
+                    {note.parentId && <span className="px-2 py-0.5 bg-md-secondary/10 text-md-secondary text-[8px] rounded-full">Approfondimento</span>}
+                  </div>
+                  <h4 className="font-bold text-lg line-clamp-2">{note.title}</h4>
+                  <p className="text-sm text-md-on-surface-variant line-clamp-3">{note.summary || note.content}</p>
+                  
+                  {/* Show insights connected to this note */}
+                  {notes.filter(n => n.parentId === note.id).length > 0 && (
+                    <div className="pt-3 border-t border-md-outline/10">
+                      <p className="text-[10px] font-bold opacity-50 uppercase mb-2">Voci Correlate:</p>
+                      <div className="flex flex-col gap-1">
+                        {notes.filter(n => n.parentId === note.id).map(insight => (
+                          <div key={insight.id} className="text-xs text-md-primary flex items-center gap-1">
+                            <ChevronRight className="w-3 h-3" />
+                            {insight.title}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {note.keywords.map(kw => (
+                      <span key={kw} className="text-[9px] bg-md-outline/5 px-1.5 py-0.5 rounded text-md-outline">#{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </main>
+      {expandedNote && (
+        <ExpandableNote 
+          note={expandedNote} 
+          onClose={() => setExpandedNote(null)} 
+          setProgress={setProgress} 
+          systemPrompts={systemPrompts} 
+        />
+      )}
     </div>
   );
 }
